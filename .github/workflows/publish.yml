@@ -8,9 +8,10 @@
 ---
 name: "Rpm Publish Release"
 on:
-  push:
-    tags:
-      - "[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch:
+  # push:
+  #   tags:
+  #     - "[0-9]+.[0-9]+.[0-9]+"
 
 defaults:
   run:
@@ -114,218 +115,219 @@ jobs:
             pulp_rpm/rpm-ruby-client.tar
           if-no-files-found: "error"
           overwrite: true
-      - name: Build docs
-        run: |
-          export DJANGO_SETTINGS_MODULE=pulpcore.app.settings
-          export PULP_SETTINGS=$PWD/.ci/ansible/settings/settings.py
-          make -C docs/ PULP_URL="https://pulp" diagrams html
-          tar -cvf docs/docs.tar docs/_build
 
-      - name: "Upload built docs"
-        uses: actions/upload-artifact@v4
-        with:
-          name: "docs.tar"
-          path: "pulp_rpm/docs/docs.tar"
-          if-no-files-found: "error"
-          overwrite: true
+  #     - name: Build docs
+  #       run: |
+  #         export DJANGO_SETTINGS_MODULE=pulpcore.app.settings
+  #         export PULP_SETTINGS=$PWD/.ci/ansible/settings/settings.py
+  #         make -C docs/ PULP_URL="https://pulp" diagrams html
+  #         tar -cvf docs/docs.tar docs/_build
 
-      - name: "Logs"
-        if: always()
-        run: |
-          echo "Need to debug? Please check: https://github.com/marketplace/actions/debugging-with-tmate"
-          http --timeout 30 --check-status --pretty format --print hb "https://pulp${PULP_API_ROOT}api/v3/status/" || true
-          docker images || true
-          docker ps -a || true
-          docker logs pulp || true
-          docker exec pulp ls -latr /etc/yum.repos.d/ || true
-          docker exec pulp cat /etc/yum.repos.d/* || true
-          docker exec pulp bash -c "pip3 list && pip3 install pipdeptree && pipdeptree"
-  publish-package:
-    runs-on: "ubuntu-latest"
-    needs:
-      - "build-bindings-docs"
+  #     - name: "Upload built docs"
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: "docs.tar"
+  #         path: "pulp_rpm/docs/docs.tar"
+  #         if-no-files-found: "error"
+  #         overwrite: true
 
-    env:
-      GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+  #     - name: "Logs"
+  #       if: always()
+  #       run: |
+  #         echo "Need to debug? Please check: https://github.com/marketplace/actions/debugging-with-tmate"
+  #         http --timeout 30 --check-status --pretty format --print hb "https://pulp${PULP_API_ROOT}api/v3/status/" || true
+  #         docker images || true
+  #         docker ps -a || true
+  #         docker logs pulp || true
+  #         docker exec pulp ls -latr /etc/yum.repos.d/ || true
+  #         docker exec pulp cat /etc/yum.repos.d/* || true
+  #         docker exec pulp bash -c "pip3 list && pip3 install pipdeptree && pipdeptree"
+  # publish-package:
+  #   runs-on: "ubuntu-latest"
+  #   needs:
+  #     - "build-bindings-docs"
 
-    steps:
-      - uses: "actions/checkout@v4"
-        with:
-          fetch-depth: 1
-          path: "pulp_rpm"
+  #   env:
+  #     GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
 
-      - uses: "actions/download-artifact@v4"
-        with:
-          name: "plugin_package"
-          path: "pulp_rpm/dist/"
+  #   steps:
+  #     - uses: "actions/checkout@v4"
+  #       with:
+  #         fetch-depth: 1
+  #         path: "pulp_rpm"
 
-      - uses: "actions/setup-python@v5"
-        with:
-          python-version: "3.11"
+  #     - uses: "actions/download-artifact@v4"
+  #       with:
+  #         name: "plugin_package"
+  #         path: "pulp_rpm/dist/"
 
-      - name: "Install python dependencies"
-        run: |
-          echo ::group::PYDEPS
-          pip install twine
-          echo ::endgroup::
+  #     - uses: "actions/setup-python@v5"
+  #       with:
+  #         python-version: "3.11"
 
-      - name: "Setting secrets"
-        run: |
-          python3 .github/workflows/scripts/secrets.py "$SECRETS_CONTEXT"
-        env:
-          SECRETS_CONTEXT: "${{ toJson(secrets) }}"
+  #     - name: "Install python dependencies"
+  #       run: |
+  #         echo ::group::PYDEPS
+  #         pip install twine
+  #         echo ::endgroup::
 
-      - name: "Deploy plugin to pypi"
-        run: |
-          .github/workflows/scripts/publish_plugin_pypi.sh ${{ github.ref_name }}
-  publish-python-bindings:
-    runs-on: "ubuntu-latest"
-    needs:
-      - "build-bindings-docs"
+  #     - name: "Setting secrets"
+  #       run: |
+  #         python3 .github/workflows/scripts/secrets.py "$SECRETS_CONTEXT"
+  #       env:
+  #         SECRETS_CONTEXT: "${{ toJson(secrets) }}"
 
-    env:
-      GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+  #     - name: "Deploy plugin to pypi"
+  #       run: |
+  #         .github/workflows/scripts/publish_plugin_pypi.sh ${{ github.ref_name }}
+  # publish-python-bindings:
+  #   runs-on: "ubuntu-latest"
+  #   needs:
+  #     - "build-bindings-docs"
 
-    steps:
-      - uses: "actions/checkout@v4"
-        with:
-          fetch-depth: 1
-          path: "pulp_rpm"
+  #   env:
+  #     GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
 
-      - name: "Download Python client"
-        uses: "actions/download-artifact@v4"
-        with:
-          name: "python-client.tar"
-          path: "pulp_rpm/"
+  #   steps:
+  #     - uses: "actions/checkout@v4"
+  #       with:
+  #         fetch-depth: 1
+  #         path: "pulp_rpm"
 
-      - name: "Untar python client packages"
-        run: |
-          tar -xvf rpm-python-client.tar
+  #     - name: "Download Python client"
+  #       uses: "actions/download-artifact@v4"
+  #       with:
+  #         name: "python-client.tar"
+  #         path: "pulp_rpm/"
 
-      - uses: "actions/setup-python@v5"
-        with:
-          python-version: "3.11"
+  #     - name: "Untar python client packages"
+  #       run: |
+  #         tar -xvf rpm-python-client.tar
 
-      - name: "Install python dependencies"
-        run: |
-          echo ::group::PYDEPS
-          pip install twine
-          echo ::endgroup::
+  #     - uses: "actions/setup-python@v5"
+  #       with:
+  #         python-version: "3.11"
 
-      - name: "Setting secrets"
-        run: |
-          python3 .github/workflows/scripts/secrets.py "$SECRETS_CONTEXT"
-        env:
-          SECRETS_CONTEXT: "${{ toJson(secrets) }}"
+  #     - name: "Install python dependencies"
+  #       run: |
+  #         echo ::group::PYDEPS
+  #         pip install twine
+  #         echo ::endgroup::
 
-      - name: "Publish client to pypi"
-        run: |
-          bash .github/workflows/scripts/publish_client_pypi.sh ${{ github.ref_name }}
-  publish-ruby-bindings:
-    runs-on: "ubuntu-latest"
-    needs:
-      - "build-bindings-docs"
+  #     - name: "Setting secrets"
+  #       run: |
+  #         python3 .github/workflows/scripts/secrets.py "$SECRETS_CONTEXT"
+  #       env:
+  #         SECRETS_CONTEXT: "${{ toJson(secrets) }}"
 
-    env:
-      GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+  #     - name: "Publish client to pypi"
+  #       run: |
+  #         bash .github/workflows/scripts/publish_client_pypi.sh ${{ github.ref_name }}
+  # publish-ruby-bindings:
+  #   runs-on: "ubuntu-latest"
+  #   needs:
+  #     - "build-bindings-docs"
 
-    steps:
-      - uses: "actions/checkout@v4"
-        with:
-          fetch-depth: 1
-          path: "pulp_rpm"
+  #   env:
+  #     GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
 
-      - name: "Download Ruby client"
-        uses: "actions/download-artifact@v4"
-        with:
-          name: "ruby-client.tar"
-          path: "pulp_rpm/"
+  #   steps:
+  #     - uses: "actions/checkout@v4"
+  #       with:
+  #         fetch-depth: 1
+  #         path: "pulp_rpm"
 
-      - name: "Untar Ruby client packages"
-        run: |
-          tar -xvf rpm-ruby-client.tar
+  #     - name: "Download Ruby client"
+  #       uses: "actions/download-artifact@v4"
+  #       with:
+  #         name: "ruby-client.tar"
+  #         path: "pulp_rpm/"
 
-      - uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: "2.6"
+  #     - name: "Untar Ruby client packages"
+  #       run: |
+  #         tar -xvf rpm-ruby-client.tar
 
-      - name: "Setting secrets"
-        run: |
-          python3 .github/workflows/scripts/secrets.py "$SECRETS_CONTEXT"
-        env:
-          SECRETS_CONTEXT: "${{ toJson(secrets) }}"
+  #     - uses: ruby/setup-ruby@v1
+  #       with:
+  #         ruby-version: "2.6"
 
-      - name: "Publish client to rubygems"
-        run: |
-          bash .github/workflows/scripts/publish_client_gem.sh ${{ github.ref_name }}
-  publish-docs:
-    runs-on: "ubuntu-latest"
-    needs:
-      - "build-bindings-docs"
+  #     - name: "Setting secrets"
+  #       run: |
+  #         python3 .github/workflows/scripts/secrets.py "$SECRETS_CONTEXT"
+  #       env:
+  #         SECRETS_CONTEXT: "${{ toJson(secrets) }}"
 
-    env:
-      GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+  #     - name: "Publish client to rubygems"
+  #       run: |
+  #         bash .github/workflows/scripts/publish_client_gem.sh ${{ github.ref_name }}
+  # publish-docs:
+  #   runs-on: "ubuntu-latest"
+  #   needs:
+  #     - "build-bindings-docs"
 
-    steps:
-      - uses: "actions/checkout@v4"
-        with:
-          fetch-depth: 1
-          path: "pulp_rpm"
+  #   env:
+  #     GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
 
-      - uses: "actions/setup-python@v5"
-        with:
-          python-version: "3.11"
+  #   steps:
+  #     - uses: "actions/checkout@v4"
+  #       with:
+  #         fetch-depth: 1
+  #         path: "pulp_rpm"
 
-      - name: "Install python dependencies"
-        run: |
-          echo ::group::PYDEPS
-          pip install 'packaging~=21.3' requests
-          echo ::endgroup::
+  #     - uses: "actions/setup-python@v5"
+  #       with:
+  #         python-version: "3.11"
 
-      - name: "Setting secrets"
-        run: |
-          python3 .github/workflows/scripts/secrets.py "$SECRETS_CONTEXT"
-        env:
-          SECRETS_CONTEXT: "${{ toJson(secrets) }}"
+  #     - name: "Install python dependencies"
+  #       run: |
+  #         echo ::group::PYDEPS
+  #         pip install 'packaging~=21.3' requests
+  #         echo ::endgroup::
 
-      - name: "Download built docs"
-        uses: "actions/download-artifact@v4"
-        with:
-          name: "docs.tar"
-          path: "pulp_rpm/"
+  #     - name: "Setting secrets"
+  #       run: |
+  #         python3 .github/workflows/scripts/secrets.py "$SECRETS_CONTEXT"
+  #       env:
+  #         SECRETS_CONTEXT: "${{ toJson(secrets) }}"
 
-      - name: "Download Python client docs"
-        uses: "actions/download-artifact@v4"
-        with:
-          name: "python-client-docs.tar"
-          path: "pulp_rpm/"
+  #     - name: "Download built docs"
+  #       uses: "actions/download-artifact@v4"
+  #       with:
+  #         name: "docs.tar"
+  #         path: "pulp_rpm/"
 
-      - name: "Publish docs to pulpproject.org"
-        run: |
-          tar -xvf docs.tar
-          .github/workflows/scripts/publish_docs.sh tag ${{ github.ref_name }}
+  #     - name: "Download Python client docs"
+  #       uses: "actions/download-artifact@v4"
+  #       with:
+  #         name: "python-client-docs.tar"
+  #         path: "pulp_rpm/"
 
-  create-gh-release:
-    runs-on: "ubuntu-latest"
-    needs:
-      - "build-bindings-docs"
-      - "publish-package"
-      - "publish-python-bindings"
-      - "publish-ruby-bindings"
-      - "publish-docs"
+  #     - name: "Publish docs to pulpproject.org"
+  #       run: |
+  #         tar -xvf docs.tar
+  #         .github/workflows/scripts/publish_docs.sh tag ${{ github.ref_name }}
 
-    steps:
-      - name: "Create release on GitHub"
-        uses: "actions/github-script@v7"
-        env:
-          TAG_NAME: "${{ github.ref_name }}"
-        with:
-          script: |
-            const { TAG_NAME } = process.env;
+  # create-gh-release:
+  #   runs-on: "ubuntu-latest"
+  #   needs:
+  #     - "build-bindings-docs"
+  #     - "publish-package"
+  #     - "publish-python-bindings"
+  #     - "publish-ruby-bindings"
+  #     - "publish-docs"
 
-            await github.rest.repos.createRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              tag_name: TAG_NAME,
-              make_latest: "legacy",
-            });
+  #   steps:
+  #     - name: "Create release on GitHub"
+  #       uses: "actions/github-script@v7"
+  #       env:
+  #         TAG_NAME: "${{ github.ref_name }}"
+  #       with:
+  #         script: |
+  #           const { TAG_NAME } = process.env;
+
+  #           await github.rest.repos.createRelease({
+  #             owner: context.repo.owner,
+  #             repo: context.repo.repo,
+  #             tag_name: TAG_NAME,
+  #             make_latest: "legacy",
+  #           });
