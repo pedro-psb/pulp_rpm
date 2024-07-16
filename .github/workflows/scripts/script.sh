@@ -45,7 +45,11 @@ if [[ "$TEST" = "docs" ]]; then
   exit
 fi
 
+set -x
+
+echo "::group::Pulp Status"
 REPORTED_STATUS="$(pulp status)"
+echo "::endgroup::"
 
 echo "machine pulp
 login admin
